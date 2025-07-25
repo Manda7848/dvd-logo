@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Bouncing DVD Logo</title>
+  <title>Bouncing DVD Logo - Fun Edition</title>
   <link href="https://fonts.googleapis.com/css?family=Orbitron:700&display=swap" rel="stylesheet">
   <style>
     html, body {
@@ -19,6 +19,15 @@
       height: 100vh;
       overflow: hidden;
     }
+    #trail-canvas, #particle-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+      display: block;
+    }
     #dvd-logo {
       position: absolute;
       width: 180px;
@@ -33,6 +42,9 @@
       font-family: 'Orbitron', Arial, sans-serif;
       font-weight: 700;
       transition: color 0.1s linear;
+      z-index: 2;
+      filter: drop-shadow(0px 0px 16px #fff4);
+      will-change: transform;
     }
     #dvd-text {
       font-size: 48px;
@@ -50,43 +62,121 @@
       margin-top: 2px;
       background: transparent;
       box-sizing: border-box;
-      /* simple shadow for the circle */
       box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+    #congrats-message {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.96);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-family: 'Orbitron', Arial, sans-serif;
+      font-size: 2.2em;
+      z-index: 999;
+      text-align: center;
+      letter-spacing: 2px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+    #congrats-message.show {
+      opacity: 1;
+      pointer-events: auto;
     }
   </style>
 </head>
 <body>
+  <canvas id="trail-canvas"></canvas>
+  <canvas id="particle-canvas"></canvas>
   <div id="dvd-container">
     <div id="dvd-logo">
       <div id="dvd-text">DVD</div>
       <div id="dvd-circle"></div>
     </div>
+    <div id="congrats-message">
+      congratulations<br>
+      you waited long enough for this many corner hits to happen<br>
+      now go touch grass
+    </div>
   </div>
   <script>
-    // Settings
+    // ----- SETUP -----
     const logo = document.getElementById('dvd-logo');
+    const logoText = document.getElementById('dvd-text');
     const container = document.getElementById('dvd-container');
-    const logocircle = document.getElementById('dvd-circle');
+    const congrats = document.getElementById('congrats-message');
+    const trailCanvas = document.getElementById('trail-canvas');
+    const trailCtx = trailCanvas.getContext('2d');
+    const particleCanvas = document.getElementById('particle-canvas');
+    const particleCtx = particleCanvas.getContext('2d');
 
-    // Initial position and velocity
+    // Make canvases always fit screen
+    function resizeCanvas() {
+      trailCanvas.width = particleCanvas.width = window.innerWidth;
+      trailCanvas.height = particleCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ----- LOGO STATE -----
+    const logoTexts = ['DVD', 'CD', 'VHS', 'BLU-RAY'];
+    let currentLogoText = 0;
+
     let x = Math.random() * (window.innerWidth - logo.offsetWidth);
     let y = Math.random() * (window.innerHeight - logo.offsetHeight);
     let vx = (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2);
     let vy = (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2);
 
     let cornerCount = 0;
+    const CORNER_LIMIT = 10;
+    let running = true;
 
     // For accurate collision with corners
     const EPS = 1.5;
 
-    // Random color generator
+    // For 3D Spin/Wobble
+    let logoSpin = 0;
+    let logoSpinVel = 0;
+    let logoWobble = 0;
+    let logoWobbleVel = 0;
+
+    // ----- TRAIL -----
+    const trail = [];
+    const MAX_TRAIL = 64;
+    const TRAIL_OPACITY = 0.14;
+
+    // ----- PARTICLES -----
+    const particles = [];
+    function spawnParticles(px, py, color) {
+      for (let i = 0; i < 18; ++i) {
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = 2 + Math.random() * 3;
+        particles.push({
+          x: px, y: py,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          alpha: 1,
+          color,
+          r: 3 + Math.random() * 5
+        });
+      }
+    }
+
+    // ----- COLOR -----
     function randomColor() {
-      // Nice bright color
       const h = Math.floor(Math.random() * 360);
       return `hsl(${h}, 90%, 55%)`;
     }
 
-    function moveLogo() {
+    // ----- MAIN ANIMATION -----
+    function animate() {
+      if (!running) return;
+
+      const prevX = x, prevY = y;
       x += vx;
       y += vy;
 
@@ -105,7 +195,6 @@
         vx = -Math.abs(vx);
         hitX = true;
       }
-
       // Bounce vertically
       if (y <= 0) {
         y = 0;
@@ -127,35 +216,128 @@
         hitCorner = true;
       }
 
-      // Change color if bounced (touching any wall)
+      // 3D spin/wobble on bounce
       if (hitX || hitY) {
-        logo.style.color = randomColor();
+        logoSpinVel += (Math.random() - 0.5) * 1.5 + (hitCorner ? 5 : 2.5);
+        logoWobbleVel += (Math.random() - 0.5) * 2 + (hitCorner ? 7 : 3);
+
+        // Change color and logo text
+        const newColor = randomColor();
+        logo.style.color = newColor;
+
+        // Next logo text
+        currentLogoText = (currentLogoText + 1) % logoTexts.length;
+        logoText.textContent = logoTexts[currentLogoText];
+
+        // Particle burst
+        const logoCenterX = x + logo.offsetWidth / 2;
+        const logoCenterY = y + logo.offsetHeight / 2;
+        spawnParticles(logoCenterX, logoCenterY, newColor);
 
         // Only count perfect corners
         if (hitCorner) {
           cornerCount++;
           console.log(`Corner hit! Total: ${cornerCount}`);
+          if (cornerCount >= CORNER_LIMIT) {
+            endGame();
+            return;
+          }
         }
       }
 
-      // Move logo
+      // Update 3D spin/wobble
+      logoSpin += logoSpinVel;
+      logoWobble += logoWobbleVel;
+      logoSpinVel *= 0.94; // friction
+      logoWobbleVel *= 0.88;
+      logoSpin *= 0.92;
+      logoWobble *= 0.89;
+
+      // Move logo visually
       logo.style.left = x + 'px';
       logo.style.top = y + 'px';
+      // 3D effect: rotateZ (spin), rotateX (wobble), rotateY (wobble)
+      logo.style.transform =
+        `rotateZ(${logoSpin}deg) rotateX(${logoWobble * 0.7}deg) rotateY(${logoWobble * 0.4}deg)`;
 
-      requestAnimationFrame(moveLogo);
+      // Add to trail
+      trail.push({
+        x: x + logo.offsetWidth / 2,
+        y: y + logo.offsetHeight / 2,
+        color: logo.style.color
+      });
+      if (trail.length > MAX_TRAIL) trail.shift();
+
+      // Draw trail
+      drawTrail();
+
+      // Animate particles
+      animateParticles();
+
+      requestAnimationFrame(animate);
     }
 
-    // Set initial color
+    // ----- TRAIL DRAW -----
+    function drawTrail() {
+      trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+      for (let i = 0; i < trail.length - 1; ++i) {
+        const p = trail[i];
+        const n = trail[i + 1];
+        trailCtx.beginPath();
+        trailCtx.moveTo(p.x, p.y);
+        trailCtx.lineTo(n.x, n.y);
+        const age = i / trail.length;
+        trailCtx.strokeStyle = p.color;
+        trailCtx.globalAlpha = (1 - age) * TRAIL_OPACITY;
+        trailCtx.lineWidth = 16 * (1 - age) + 1;
+        trailCtx.stroke();
+      }
+      trailCtx.globalAlpha = 1.0;
+    }
+
+    // ----- PARTICLE ANIMATION -----
+    function animateParticles() {
+      particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+      for (let i = particles.length - 1; i >= 0; --i) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.97;
+        p.vy *= 0.97;
+        p.alpha *= 0.94;
+        if (p.alpha < 0.05) {
+          particles.splice(i, 1);
+          continue;
+        }
+        particleCtx.globalAlpha = p.alpha;
+        particleCtx.beginPath();
+        particleCtx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
+        particleCtx.fillStyle = p.color;
+        particleCtx.shadowColor = p.color;
+        particleCtx.shadowBlur = 16;
+        particleCtx.fill();
+        particleCtx.shadowBlur = 0;
+      }
+      particleCtx.globalAlpha = 1.0;
+    }
+
+    // ----- END GAME -----
+    function endGame() {
+      running = false;
+      logo.style.display = 'none';
+      congrats.classList.add('show');
+    }
+
+    // ----- INITIALIZE -----
     logo.style.color = randomColor();
 
-    // Responsive: reposition if window resized
     window.addEventListener('resize', () => {
       x = Math.min(x, window.innerWidth - logo.offsetWidth);
       y = Math.min(y, window.innerHeight - logo.offsetHeight);
+      resizeCanvas();
     });
 
-    // Start animation
-    moveLogo();
+    animate();
   </script>
 </body>
 </html>
