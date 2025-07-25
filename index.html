@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bouncing DVD Logo</title>
+  <link href="https://fonts.googleapis.com/css?family=Orbitron:700&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    #dvd-container {
+      position: absolute;
+      left: 0; top: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #dvd-logo {
+      position: absolute;
+      width: 180px;
+      height: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      pointer-events: none;
+      color: #fff;
+      font-family: 'Orbitron', Arial, sans-serif;
+      font-weight: 700;
+      transition: color 0.1s linear;
+    }
+    #dvd-text {
+      font-size: 48px;
+      letter-spacing: 10px;
+      line-height: 1;
+      margin-bottom: 0;
+      margin-top: 0;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    #dvd-circle {
+      width: 66px;
+      height: 18px;
+      border-radius: 50%;
+      border: 5px solid currentColor;
+      margin-top: 2px;
+      background: transparent;
+      box-sizing: border-box;
+      /* simple shadow for the circle */
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div id="dvd-container">
+    <div id="dvd-logo">
+      <div id="dvd-text">DVD</div>
+      <div id="dvd-circle"></div>
+    </div>
+  </div>
+  <script>
+    // Settings
+    const logo = document.getElementById('dvd-logo');
+    const container = document.getElementById('dvd-container');
+    const logocircle = document.getElementById('dvd-circle');
+
+    // Initial position and velocity
+    let x = Math.random() * (window.innerWidth - logo.offsetWidth);
+    let y = Math.random() * (window.innerHeight - logo.offsetHeight);
+    let vx = (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2);
+    let vy = (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2);
+
+    let cornerCount = 0;
+
+    // For accurate collision with corners
+    const EPS = 1.5;
+
+    // Random color generator
+    function randomColor() {
+      // Nice bright color
+      const h = Math.floor(Math.random() * 360);
+      return `hsl(${h}, 90%, 55%)`;
+    }
+
+    function moveLogo() {
+      x += vx;
+      y += vy;
+
+      const maxX = window.innerWidth - logo.offsetWidth;
+      const maxY = window.innerHeight - logo.offsetHeight;
+
+      let hitX = false, hitY = false, hitCorner = false;
+
+      // Bounce horizontally
+      if (x <= 0) {
+        x = 0;
+        vx = Math.abs(vx);
+        hitX = true;
+      } else if (x >= maxX) {
+        x = maxX;
+        vx = -Math.abs(vx);
+        hitX = true;
+      }
+
+      // Bounce vertically
+      if (y <= 0) {
+        y = 0;
+        vy = Math.abs(vy);
+        hitY = true;
+      } else if (y >= maxY) {
+        y = maxY;
+        vy = -Math.abs(vy);
+        hitY = true;
+      }
+
+      // Check perfect corner hit
+      if (
+        (Math.abs(x) < EPS && Math.abs(y) < EPS) || // top-left
+        (Math.abs(x - maxX) < EPS && Math.abs(y) < EPS) || // top-right
+        (Math.abs(x) < EPS && Math.abs(y - maxY) < EPS) || // bottom-left
+        (Math.abs(x - maxX) < EPS && Math.abs(y - maxY) < EPS) // bottom-right
+      ) {
+        hitCorner = true;
+      }
+
+      // Change color if bounced (touching any wall)
+      if (hitX || hitY) {
+        logo.style.color = randomColor();
+
+        // Only count perfect corners
+        if (hitCorner) {
+          cornerCount++;
+          console.log(`Corner hit! Total: ${cornerCount}`);
+        }
+      }
+
+      // Move logo
+      logo.style.left = x + 'px';
+      logo.style.top = y + 'px';
+
+      requestAnimationFrame(moveLogo);
+    }
+
+    // Set initial color
+    logo.style.color = randomColor();
+
+    // Responsive: reposition if window resized
+    window.addEventListener('resize', () => {
+      x = Math.min(x, window.innerWidth - logo.offsetWidth);
+      y = Math.min(y, window.innerHeight - logo.offsetHeight);
+    });
+
+    // Start animation
+    moveLogo();
+  </script>
+</body>
+</html>
