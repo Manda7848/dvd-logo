@@ -114,7 +114,6 @@
     const particleCanvas = document.getElementById('particle-canvas');
     const particleCtx = particleCanvas.getContext('2d');
 
-    // Make canvases always fit screen
     function resizeCanvas() {
       trailCanvas.width = particleCanvas.width = window.innerWidth;
       trailCanvas.height = particleCanvas.height = window.innerHeight;
@@ -126,19 +125,19 @@
     const logoTexts = ['DVD', 'CD', 'VHS', 'BLU-RAY'];
     let currentLogoText = 0;
 
-    let x = Math.random() * (window.innerWidth - logo.offsetWidth);
-    let y = Math.random() * (window.innerHeight - logo.offsetHeight);
+    let x = Math.random() * (window.innerWidth - 180);
+    let y = Math.random() * (window.innerHeight - 90);
     let vx = (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2);
     let vy = (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2);
 
     let cornerCount = 0;
-    const CORNER_LIMIT = 10;
+    const CORNER_LIMIT = 1; // <<<< CHANGED HERE
+
     let running = true;
 
-    // For accurate collision with corners
     const EPS = 1.5;
 
-    // For 3D Spin/Wobble
+    // 3D Spin/Wobble
     let logoSpin = 0;
     let logoSpinVel = 0;
     let logoWobble = 0;
@@ -166,43 +165,44 @@
       }
     }
 
-    // ----- COLOR -----
     function randomColor() {
       const h = Math.floor(Math.random() * 360);
       return `hsl(${h}, 90%, 55%)`;
     }
 
-    // ----- MAIN ANIMATION -----
     function animate() {
       if (!running) return;
 
-      const prevX = x, prevY = y;
+      let prevX = x, prevY = y;
       x += vx;
       y += vy;
 
-      const maxX = window.innerWidth - logo.offsetWidth;
-      const maxY = window.innerHeight - logo.offsetHeight;
+      const logoW = 180;
+      const logoH = 90;
+      const maxX = window.innerWidth - logoW;
+      const maxY = window.innerHeight - logoH;
 
       let hitX = false, hitY = false, hitCorner = false;
 
-      // Bounce horizontally
-      if (x <= 0) {
+      // "Real" bounce: reflect against the wall, not just set vx/vy to absolute values
+      // Left or right wall
+      if (x < 0) {
         x = 0;
-        vx = Math.abs(vx);
+        vx = -vx;
         hitX = true;
-      } else if (x >= maxX) {
+      } else if (x > maxX) {
         x = maxX;
-        vx = -Math.abs(vx);
+        vx = -vx;
         hitX = true;
       }
-      // Bounce vertically
-      if (y <= 0) {
+      // Top or bottom wall
+      if (y < 0) {
         y = 0;
-        vy = Math.abs(vy);
+        vy = -vy;
         hitY = true;
-      } else if (y >= maxY) {
+      } else if (y > maxY) {
         y = maxY;
-        vy = -Math.abs(vy);
+        vy = -vy;
         hitY = true;
       }
 
@@ -230,8 +230,8 @@
         logoText.textContent = logoTexts[currentLogoText];
 
         // Particle burst
-        const logoCenterX = x + logo.offsetWidth / 2;
-        const logoCenterY = y + logo.offsetHeight / 2;
+        const logoCenterX = x + logoW / 2;
+        const logoCenterY = y + logoH / 2;
         spawnParticles(logoCenterX, logoCenterY, newColor);
 
         // Only count perfect corners
@@ -248,7 +248,7 @@
       // Update 3D spin/wobble
       logoSpin += logoSpinVel;
       logoWobble += logoWobbleVel;
-      logoSpinVel *= 0.94; // friction
+      logoSpinVel *= 0.94;
       logoWobbleVel *= 0.88;
       logoSpin *= 0.92;
       logoWobble *= 0.89;
@@ -256,14 +256,13 @@
       // Move logo visually
       logo.style.left = x + 'px';
       logo.style.top = y + 'px';
-      // 3D effect: rotateZ (spin), rotateX (wobble), rotateY (wobble)
       logo.style.transform =
         `rotateZ(${logoSpin}deg) rotateX(${logoWobble * 0.7}deg) rotateY(${logoWobble * 0.4}deg)`;
 
       // Add to trail
       trail.push({
-        x: x + logo.offsetWidth / 2,
-        y: y + logo.offsetHeight / 2,
+        x: x + logoW / 2,
+        y: y + logoH / 2,
         color: logo.style.color
       });
       if (trail.length > MAX_TRAIL) trail.shift();
@@ -277,7 +276,6 @@
       requestAnimationFrame(animate);
     }
 
-    // ----- TRAIL DRAW -----
     function drawTrail() {
       trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
       for (let i = 0; i < trail.length - 1; ++i) {
@@ -295,7 +293,6 @@
       trailCtx.globalAlpha = 1.0;
     }
 
-    // ----- PARTICLE ANIMATION -----
     function animateParticles() {
       particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
       for (let i = particles.length - 1; i >= 0; --i) {
@@ -321,19 +318,17 @@
       particleCtx.globalAlpha = 1.0;
     }
 
-    // ----- END GAME -----
     function endGame() {
       running = false;
       logo.style.display = 'none';
       congrats.classList.add('show');
     }
 
-    // ----- INITIALIZE -----
     logo.style.color = randomColor();
 
     window.addEventListener('resize', () => {
-      x = Math.min(x, window.innerWidth - logo.offsetWidth);
-      y = Math.min(y, window.innerHeight - logo.offsetHeight);
+      x = Math.min(x, window.innerWidth - 180);
+      y = Math.min(y, window.innerHeight - 90);
       resizeCanvas();
     });
 
