@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Bouncing DVD Logo - Fun Edition</title>
+  <title>Bouncing DVD Logo - Classic Bounce</title>
   <link href="https://fonts.googleapis.com/css?family=Orbitron:700&display=swap" rel="stylesheet">
   <style>
     html, body {
@@ -44,7 +44,6 @@
       transition: color 0.1s linear;
       z-index: 2;
       filter: drop-shadow(0px 0px 16px #fff4);
-      will-change: transform;
     }
     #dvd-text {
       font-size: 48px;
@@ -98,9 +97,9 @@
       <div id="dvd-circle"></div>
     </div>
     <div id="congrats-message">
-      Congratulations!<br>
-      you stuck around long enough for this many corner hits to occur<br>
-      now go touch grass.
+      congratulations<br>
+      you waited long enough for this many corner hits to happen<br>
+      now go touch grass
     </div>
   </div>
   <script>
@@ -131,17 +130,11 @@
     let vy = (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 2);
 
     let cornerCount = 0;
-    const CORNER_LIMIT = 10; // <<<< CHANGED HERE
+    const CORNER_LIMIT = 1; // See the message after first perfect corner hit
 
     let running = true;
 
     const EPS = 1.5;
-
-    // 3D Spin/Wobble
-    let logoSpin = 0;
-    let logoSpinVel = 0;
-    let logoWobble = 0;
-    let logoWobbleVel = 0;
 
     // ----- TRAIL -----
     const trail = [];
@@ -184,8 +177,7 @@
 
       let hitX = false, hitY = false, hitCorner = false;
 
-      // "Real" bounce: reflect against the wall, not just set vx/vy to absolute values
-      // Left or right wall
+      // Classic bounce: simply reverse direction if hitting an edge
       if (x < 0) {
         x = 0;
         vx = -vx;
@@ -195,7 +187,6 @@
         vx = -vx;
         hitX = true;
       }
-      // Top or bottom wall
       if (y < 0) {
         y = 0;
         vy = -vy;
@@ -216,11 +207,8 @@
         hitCorner = true;
       }
 
-      // 3D spin/wobble on bounce
+      // On bounce
       if (hitX || hitY) {
-        logoSpinVel += (Math.random() - 0.5) * 1.5 + (hitCorner ? 5 : 2.5);
-        logoWobbleVel += (Math.random() - 0.5) * 2 + (hitCorner ? 7 : 3);
-
         // Change color and logo text
         const newColor = randomColor();
         logo.style.color = newColor;
@@ -245,19 +233,10 @@
         }
       }
 
-      // Update 3D spin/wobble
-      logoSpin += logoSpinVel;
-      logoWobble += logoWobbleVel;
-      logoSpinVel *= 0.94;
-      logoWobbleVel *= 0.88;
-      logoSpin *= 0.92;
-      logoWobble *= 0.89;
-
-      // Move logo visually
+      // Move logo visually (no wiggle/rotation)
       logo.style.left = x + 'px';
       logo.style.top = y + 'px';
-      logo.style.transform =
-        `rotateZ(${logoSpin}deg) rotateX(${logoWobble * 0.7}deg) rotateY(${logoWobble * 0.4}deg)`;
+      logo.style.transform = ""; // Remove rotation
 
       // Add to trail
       trail.push({
